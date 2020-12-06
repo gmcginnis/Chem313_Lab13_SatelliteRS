@@ -360,6 +360,11 @@ city_subset <- city_sampling %>%
 
 lab_mean <- expression(paste("Mean NO"[2]*" column density (10"^15*"molecules/cm"^2*")"))
 
+city_subset$city <- factor(city_subset$city, levels = c("Los Angeles", "Beijing", "Seoul", "Milan", "London"))
+sah_color <- wes_palette("Zissou1")[5]
+sah_beijing <- as.Date("2020-01-23")
+sah_los_angeles <- as.Date("2020-03-19")
+
 ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year))+
   facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
   # geom_line(data = subset(city_subset, year != "2020"), alpha = 0.2)+
@@ -368,13 +373,99 @@ ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year))+
   # geom_point(data = subset(city_subset, year == "2020"), alpha = 0.3)+
   # stat_smooth(data = subset(city_subset, year != "2020"), se=FALSE)+
   # stat_smooth(data = subset(city_subset, year == "2020"), se=FALSE, size=1.5)+
+  #stat_smooth(alpha=0.1)+
   stat_smooth(se=FALSE)+
+  geom_vline(data=filter(city_subset, city=="Beijing"), aes(xintercept=sah_beijing),color=sah_color)+
+  geom_vline(data=filter(city_subset, city=="Los Angeles"), aes(xintercept=sah_los_angeles))+
   scale_x_date(date_breaks = "1 month", date_labels="%b")+
-  theme_few()+
-  theme(axis.text.x = element_text(angle = 30,
-                                   vjust = 0.7))+
+  #theme_minimal()+
+  #theme_economist_white()+
+  theme_igray()+
+  theme(legend.position="top")+
+  #theme_economist()+
+  # theme(axis.text.x = element_text(angle = 30,
+  #                                  vjust = 0.7))+
   scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
   labs(x = "Time (data taken daily)", y = lab_mean, color = "Year")
+
+##HERE
+#Source: https://en.wikipedia.org/wiki/COVID-19_pandemic_lockdowns
+sah_dataframe <- city_subset %>%
+  mutate(sah = case_when(
+    city=="Los Angeles" ~ as.Date("2020-03-19"),
+    city=="Beijing" ~ as.Date("2020-01-23"),
+    #city=="Seoul" ~ as.Date("2020-01-01"), #South Korea did not enter lockdown
+    city=="Milan" ~ as.Date("2020-03-09"),
+    city=="London" ~ as.Date("2020-03-23")
+  ))%>%
+  mutate(sah_end = case_when(
+    city=="Los Angeles" ~ as.Date("2020-05-08"),
+    city=="Beijing" ~ as.Date("2020-03-25"),
+    #city=="Seoul" ~ as.Date("2020-01-01"), #South Korea did not enter lockdown
+    city=="Milan" ~ as.Date("2020-05-18"),
+    city=="London" ~ as.Date("2020-07-04")
+  ))
+
+sah_labels <- sah_dataframe %>%
+  mutate(yloc = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Beijing" ~ 1.75,
+    #city=="Seoul" ~ 0, #South Korea did not enter lockdown
+    city=="Milan" ~ 1.3,
+    city=="London" ~ 0.8
+  )) %>%
+  mutate(yloc_end = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Beijing" ~ 1.75,
+    #city=="Seoul" ~ 0, #South Korea did not enter lockdown
+    city=="Milan" ~ 1.3,
+    city=="London" ~ 0.8
+  )) %>%
+  select(city, sah, sah_end, yloc, yloc_end) %>%
+  distinct() %>%
+  mutate(sah_md = format(sah, format="%b %d"),
+         sah_md_end = format(sah_end, format = "%b %d"))
+
+ggplot(sah_dataframe, aes(x=m_d, y=mean_mod, color=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  stat_smooth(se=FALSE)+
+  geom_vline(aes(xintercept = sah), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah_end), color=sah_color, linetype="dotted")+
+  #geom_blank(aes(fill=sah_color),show.legend=TRUE)+
+  # scale_linetype(name="SAH")+
+  # guides(linetype=guide_legend(override.aes=list(colour=sah_color)))+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_igray()+
+  theme(legend.position="top", panel.grid.major.x=element_blank())+
+  scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  #geom_text(aes(x=sah, label=sah,y=max(mean_mod)),show.legend=FALSE,nudge_x=30)+
+  ##geom_text(aes(x = sah, y = yloc, label = sah), color=sah_color, show.legend=TRUE,nudge_x=30)+
+  geom_text(data=sah_labels,aes(x = sah, y = yloc, label = paste(sah_md)), size=3, color=sah_color, show.legend=FALSE, nudge_x=15)+
+  geom_text(data=sah_labels,aes(x = sah_end, y = yloc_end, label = paste(sah_md_end)), size=3, color=sah_color, show.legend=FALSE, nudge_x=15)+
+  #annotate("text", x = sah_dataframe$sah, y = 10, label="SAH")+
+  #geom_vline(aes(xintercept = sah, color=sah_color), linetype="dotted")+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year")
+
+
+
+
+##
+
+ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year, fill=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  # geom_line(data = subset(city_subset, year != "2020"), alpha = 0.2)+
+  # geom_line(data = subset(city_subset, year == "2020"), alpha = 0.4)+
+  # geom_point(data = subset(city_subset, year != "2020"), shape = 1, alpha = 0.2)+
+  # geom_point(data = subset(city_subset, year == "2020"), alpha = 0.3)+
+  # stat_smooth(data = subset(city_subset, year != "2020"), se=FALSE)+
+  # stat_smooth(data = subset(city_subset, year == "2020"), se=FALSE, size=1.5)+
+  stat_smooth(alpha=0.1)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_igray()+
+  theme(legend.position="top")+
+  scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  scale_fill_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year", fill="Year")
 
 
 ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year, fill=year))+
@@ -389,7 +480,7 @@ ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year, fill=year))+
   # stat_smooth(data = subset(city_subset, year == "2020"), se=FALSE, size=1.5)+
   stat_smooth()+
   scale_x_date(date_breaks = "1 month", date_labels="%b")+
-  theme_few()+
+  theme_tufte()+
   theme(axis.text.x = element_text(angle = 30,
                                    vjust = 0.7))+
   scale_color_manual(values = wes_palette("Zissou1", 7, type = "continuous"))+
@@ -404,7 +495,7 @@ ggplot(city_sampling, aes(x = m_d, y = mean_mod, color = year_cat, fill=year_cat
   facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
   stat_smooth(method="loess")+
   scale_x_date(date_breaks = "1 month", date_labels="%b")+
-  theme_few()+
+  theme_tufte()+
   theme(axis.text.x = element_text(angle = 30,
                                    vjust = 0.7))+
   scale_color_manual(values = four_pal)+
@@ -424,6 +515,94 @@ ggplot(data=subset(city_sampling, year_cat %in% c("2015-2019", "2020")), aes(x =
   scale_fill_manual(values = six_pal)+
   labs(x = "Time (data taken daily)", y = lab_mean, color = "Year", fill = "Year")
 ```
+
+```{r}
+city_subset <- city_sampling %>%
+  filter(year %in% c("2015", "2016", "2017", "2018", "2019", "2020"))
+
+lab_mean <- expression(paste("Mean NO"[2]*" column density (10"^15*"molecules/cm"^2*")"))
+
+city_subset$city <- factor(city_subset$city, levels = c("Los Angeles", "Beijing", "Seoul", "Milan", "London"))
+sah_color <- wes_palette("Zissou1")[5]
+
+
+sah_all <- city_subset %>%
+  mutate(sah1 = case_when(
+    city=="Los Angeles" ~ as.Date("2020-03-19"),
+    city=="Beijing" ~ as.Date("2020-01-23"),
+    city=="Milan" ~ as.Date("2020-03-09"),
+    city=="London" ~ as.Date("2020-03-23")
+  ))%>%
+  mutate(sah1_end = case_when(
+    city=="Los Angeles" ~ as.Date("2020-05-08"),
+    city=="Beijing" ~ as.Date("2020-03-25"),
+    city=="Milan" ~ as.Date("2020-05-18"),
+    city=="London" ~ as.Date("2020-07-04")
+  ))%>%
+  mutate(sah2 = case_when(
+    city=="Milan" ~ as.Date("2020-11-06"),
+    city=="London" ~ as.Date("2020-11-05")
+  ))%>%
+  mutate(sah2_end = case_when(
+    city=="Milan" ~ as.Date("2020-12-03"),
+    city=="London" ~ as.Date("2020-12-02")
+  ))
+
+sah_all_labels <- sah_all %>%
+  mutate(yloc1 = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Beijing" ~ 1.75,
+    city=="Milan" ~ 1.3,
+    city=="London" ~ 0.8
+  )) %>%
+  mutate(yloc1_end = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Beijing" ~ 1.75,
+    city=="Milan" ~ 1.3,
+    city=="London" ~ 0.95
+  )) %>%
+ mutate(yloc2 = case_when(
+    city=="Milan" ~ 0.75,
+    city=="London" ~ 0.95
+  )) %>%
+  mutate(yloc2_end = case_when(
+    city=="Milan" ~ 0.75,
+    city=="London" ~ 0.95
+  )) %>%
+  select(city, sah1, sah1_end, sah2, sah2_end, yloc1, yloc1_end, yloc2, yloc2_end) %>%
+  distinct() %>%
+  mutate(sah1_md = format(sah1, format="%b %d"),
+         sah1_md_end = format(sah1_end, format = "%b %d"),
+         sah2_md = format(sah2, format="%b %d"),
+         sah2_md_end = format(sah2_end, format = "%b %d"))
+
+# sah_labels_long <- sah_all_labels %>%
+#   pivot_longer(2:5, names_to = "sah_cat", values_to="sah_dates")%>%
+#   pivot_longer(2:5, names_to = "sah_cat_y", values_to = "sah_y")
+
+ggplot(sah_all, aes(x=m_d, y=mean_mod, color=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  stat_smooth(se=FALSE)+
+  geom_vline(aes(xintercept = sah1), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah1_end), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah2), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah2_end), color=sah_color, linetype="dotted")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_igray()+
+  theme(legend.position="top", panel.grid.major.x=element_blank())+
+  scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  geom_text(data=sah_all_labels,aes(x = sah1, y = yloc1, label = paste("SaH1:\n",sah1_md)),
+            #size=2.5, color=sah_color, show.legend=FALSE, nudge_x=3, hjust=0)+
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_all_labels,aes(x = sah1_end, y = yloc1_end, label = paste("End:\n",sah1_md_end)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_all_labels,aes(x = sah2, y = yloc2, label = paste("SaH2:\n",sah2_md)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_all_labels,aes(x = sah2_end, y = yloc2_end, label = paste("End:\n",sah2_md_end)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year")
+```
+
 
 ```{r los angeles}
 formatted_la <- city_sampling %>%
