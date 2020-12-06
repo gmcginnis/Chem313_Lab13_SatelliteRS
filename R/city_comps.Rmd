@@ -1,0 +1,485 @@
+---
+title: "city_comps"
+author: "Gillian McGinnis"
+date: "12/5/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(wesanderson)
+library(ggthemes)
+```
+
+```{r dataframes}
+la_usa <- read_csv("data/la_no2.csv", skip=7) %>%
+  mutate(city = "LA") %>%
+  rename("mean" = 2) 
+chi_usa <- read_csv("data/chi_no2.csv", skip=7) %>%
+  mutate(city = "CHI") %>%
+  rename("mean" = 2) 
+mel_aus <- read_csv("data/mel_aus_no2.csv", skip=7) %>%
+  mutate(city = "MEL") %>%
+  rename("mean" = 2)
+```
+
+
+```{r wrangling}
+joined <- full_join(la_usa, chi_usa) %>%
+  full_join(mel_aus) %>%
+  filter(mean > 0) %>%
+  mutate(year = format(time, format="%Y"),
+         month = format(time, format="%m"),
+         day = format(time, format="%d"),
+         m_d = format(time, format="%m-%d"),
+         m_d_mod = as.Date(m_d, format="%m-%d"),
+         d = as.Date(day, format="%d")) %>%
+  mutate(year = format(time, format = "%Y"),
+         y = as.Date(year, format = "%Y"),
+         month = format(time, format = "%m"),
+         m = as.Date(month, format = "%m"),
+         day = format(time, format = "%d"),
+         d = as.Date(day, format = "%d"),
+         month_day = format(time, format="%m-%d"),
+         m_d = as.Date(month_day, format="%m-%d")) %>%
+  filter(year != "2018")
+```
+
+```{r viz}
+ggplot(joined, aes(x = m_d, y = mean, color = year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(alpha=0.3)+
+  #geom_point(alpha=0.3, shape = 1)+
+  stat_smooth(se = FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+```
+
+```{r decade testing}
+la_dec <- read_csv("data/la_no2_dec.csv", skip=7) %>%
+  mutate(city = "LA") %>%
+  rename("mean" = 2)
+
+la_dec_df <- la_dec %>%
+  filter(mean > 0) %>%
+  mutate(year = format(time, format="%Y"),
+         month = format(time, format="%m"),
+         day = format(time, format="%d"),
+         m_d = format(time, format="%m-%d"),
+         m_d_mod = as.Date(m_d, format="%m-%d"),
+         d = as.Date(day, format="%d")) %>%
+  mutate(year = format(time, format = "%Y"),
+         y = as.Date(year, format = "%Y"),
+         month = format(time, format = "%m"),
+         m = as.Date(month, format = "%m"),
+         day = format(time, format = "%d"),
+         d = as.Date(day, format = "%d"),
+         month_day = format(time, format="%m-%d"),
+         m_d = as.Date(month_day, format="%m-%d")) %>%
+  mutate(year_cat = case_when(
+    year == "2020" ~ "2020",
+    #year != "2020" ~ "2010-2019"
+    #year != c("2010", "2011", "2012", "2013", "2014", "2020") ~ "2015-2019",
+    #year != c("2015", "2016", "2017", "2018", "2019", "2020") ~ "2010-2014"
+    year == "2010" | year == "2011" | year == "2012" | year == "2013" | year == "2014" ~ "2010-2014",
+    year == "2015" | year == "2016" | year == "2017" | year == "2018" | year == "2019" ~ "2015-2019"
+  ))
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(alpha=0.3)+
+  #geom_point(alpha=0.3, shape = 1)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+## accidentally pretty graph
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year))+
+  #facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(alpha=0.3)+
+  #geom_point(alpha=0.3, shape = 1)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = wes_palette("Zissou1", 11, type = "continuous"))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year))+
+  #facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  #geom_line(alpha=0.3)+
+  #geom_point(alpha=0.3, shape = 1)+
+  geom_line(data = subset(la_dec_df, year != "2020"), alpha = 0.2)+
+  geom_line(data = subset(la_dec_df, year == "2020"), alpha = 0.4)+
+  # geom_point(data = subset(la_dec_df, year != "2020"), shape = 1, alpha = 0.3)+
+  # geom_point(data = subset(la_dec_df, year == "2020"), alpha = 0.3)+
+  stat_smooth(data = subset(la_dec_df, year != "2020"), se=FALSE)+
+  stat_smooth(data = subset(la_dec_df, year == "2020"), se=FALSE, size=1.5)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = wes_palette("Zissou1", 11, type = "continuous"))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+my_pal <- wes_palette("Rushmore1")[3:5]
+#the one
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  geom_line(data = subset(la_dec_df, year != "2020"), alpha = 0.2)+
+  geom_line(data = subset(la_dec_df, year == "2020"), alpha = 0.4)+
+  stat_smooth(data = subset(la_dec_df, year != "2020"), se=FALSE)+
+  stat_smooth(data = subset(la_dec_df, year == "2020"), se=FALSE, size=1.5)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = wes_palette("FantasticFox1", 3, type = "continuous"))+
+  #scale_color_manual(values = my_pal)+
+  #scale_color_manual(values = few_pal("Dark")(3))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+
+
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year))+
+  #facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_point(data = subset(la_dec_df, year != "2020"), shape = 1, alpha = 0.3)+
+  geom_point(data = subset(la_dec_df, year == "2020"), alpha = 0.3, color = "blue")+
+  #stat_smooth(se=FALSE)+
+  stat_smooth(data = subset(la_dec_df, year != "2020"), se=FALSE, alpha=0.7)+
+  stat_smooth(data = subset(la_dec_df, year == "2020"), se=FALSE, color = "blue")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  #scale_color_manual(values = wes_palette("Zissou1", 11, type = "continuous"))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  #facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_point(data = subset(la_dec_df, year != "2020"), shape = 1, alpha = 0.2)+
+  geom_point(data = subset(la_dec_df, year == "2020"), alpha = 0.3)+
+  #stat_smooth(se=FALSE)+
+  stat_smooth(data = subset(la_dec_df, year != "2020"), se=FALSE)+
+  stat_smooth(data = subset(la_dec_df, year == "2020"), se=FALSE, size = 1.5)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  #scale_color_manual(values = wes_palette("Zissou1", 11, type = "continuous"))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+# la_dec_df_filtered <- la_dec_df %>%
+#   filter(year %in% c("2015", "2016", "2017", "2018", "2019", "2020"))
+# 
+# ggplot(la_dec_df_filtered, aes(x = m_d, y = mean, color = year))+
+#   #facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+#   geom_line(alpha=0.3)+
+#   #geom_point(alpha=0.3, shape = 1)+
+#   stat_smooth(se=FALSE)+
+#   scale_x_date(date_breaks = "1 month", date_labels="%b")+
+#   theme_few()+
+#   theme(axis.text.x = element_text(angle = 30,
+#                                    vjust = 0.7))+
+#   #scale_color_manual(values = wes_palette("Zissou1", 11, type = "continuous"))+
+#   scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+#   labs(x = "Time", y = "Mean", color = "Year")
+
+
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(alpha=0.3)+
+  #geom_point(alpha=0.3, shape = 1)+
+  stat_smooth(se=FALSE, aes(color = year))+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+ggplot(la_dec_df, aes(x = m_d, y = mean))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(data = subset(la_dec_df, year != "2020"), alpha=0.3)+
+  stat_smooth(data = subset(la_dec_df, year != "2020"), se = FALSE, alpha=0.7,color = "black")+
+  geom_line(data = subset(la_dec_df, year == "2020"), alpha = 0.7, color = "red")+
+  stat_smooth(data = subset(la_dec_df, year == "2020"), se = FALSE, color = "red")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_line(alpha=0.3)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  #scale_color_manual(values = wes_palette("Zissou1", 2, type = "continuous"))+
+  #scale_color_manual(values = wes_palette("Darjeeling1"))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_point(data = subset(la_dec_df, year != "2020"), shape = 1, alpha = 0.2)+
+  geom_line(data = subset(la_dec_df, year == "2020"), alpha = 0.5)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+ggplot(la_dec_df, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free")+
+  geom_point(data = subset(la_dec_df, year != "2020"), shape = 1, alpha = 0.2)+
+  geom_point(data = subset(la_dec_df, year == "2020"), alpha = 0.2)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+```
+
+```{r}
+joined_dec <- full_join(joined, la_dec_df) %>%
+  mutate(year_cat = case_when(
+    year == "2020" ~ "2020",
+    #year != "2020" ~ "2010-2019"
+    #year != c("2010", "2011", "2012", "2013", "2014", "2020") ~ "2015-2019",
+    #year != c("2015", "2016", "2017", "2018", "2019", "2020") ~ "2010-2014"
+    year == "2010" | year == "2011" | year == "2012" | year == "2013" | year == "2014" ~ "2010-2014",
+    year == "2015" | year == "2016" | year == "2017" | year == "2018" | year == "2019" ~ "2015-2019"
+  ))
+
+ggplot(joined_dec, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  #geom_line(alpha = 0.5)+
+  geom_point(data = subset(joined_dec, year != "2020"), shape = 1, alpha = 0.1)+
+  geom_point(data = subset(joined_dec, year == "2020"), alpha = 0.1)+
+  #geom_point(data = subset(joined_dec, year != "2020"), shape = 1, alpha = 0.2)+
+  #geom_line(data = subset(joined_dec, year == "2020"), alpha = 0.5)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
+```
+
+
+```{r full city wrangling}
+los_angeles <- read_csv("data/los_angeles.csv", skip=7)%>%
+  mutate(city="Los Angeles")%>%
+  rename("mean"=2)
+
+london <- read_csv("data/london.csv", skip=7)%>%
+  mutate(city="London")%>%
+  rename("mean"=2)
+
+beijing <- read_csv("data/beijing.csv", skip=7)%>%
+  mutate(city="Beijing")%>%
+  rename("mean"=2)
+
+seoul <- read_csv("data/seoul.csv", skip=7)%>%
+  mutate(city="Seoul")%>%
+  rename("mean"=2)
+
+milan <- read_csv("data/milan.csv", skip=7) %>%
+  mutate(city="Milan")%>%
+  rename("mean"=2)
+
+city_sampling <- full_join(los_angeles, london) %>%
+  full_join(beijing) %>%
+  full_join(seoul) %>%
+  full_join(milan) %>%
+  filter(mean > 0) %>%
+  mutate(year = format(time, format="%Y"),
+         month = format(time, format="%m"),
+         day = format(time, format="%d"),
+         m_d = format(time, format="%m-%d"),
+         m_d_mod = as.Date(m_d, format="%m-%d"),
+         d = as.Date(day, format="%d")) %>%
+  mutate(year = format(time, format = "%Y"),
+         y = as.Date(year, format = "%Y"),
+         month = format(time, format = "%m"),
+         m = as.Date(month, format = "%m"),
+         day = format(time, format = "%d"),
+         d = as.Date(day, format = "%d"),
+         month_day = format(time, format="%m-%d"),
+         m_d = as.Date(month_day, format="%m-%d")) %>%
+  mutate(year_cat = case_when(
+    year == "2005" | year == "2006" | year == "2007" | year == "2008" | year == "2009" ~ "2005-2009",
+    year == "2010" | year == "2011" | year == "2012" | year == "2013" | year == "2014" ~ "2010-2014",
+    year == "2015" | year == "2016" | year == "2017" | year == "2018" | year == "2019" ~ "2015-2019",
+    year == "2020" ~ "2020"
+  )) %>%
+  mutate(mean_mod = mean/(10e15))
+```
+
+
+
+
+```{r viz}
+wes <- wes_palette("Rushmore1")[2:5]
+#wes <- wes_palette("FantasticFox1")[2:5]
+#the one
+ggplot(city_sampling, aes(x = m_d, y = mean, color = year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  # geom_line(data = subset(city_sampling, year != "2020"), alpha = 0.2)+
+  # geom_line(data = subset(city_sampling, year == "2020"), alpha = 0.4)+
+  stat_smooth(data = subset(city_sampling, year != "2020"), se=FALSE)+
+  stat_smooth(data = subset(city_sampling, year == "2020"), se=FALSE, size=1.5)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  #scale_color_manual(values = wes_palette("RUshmore1", 4, type = "continuous"))+
+  scale_color_manual(values = wes)+
+  #scale_color_manual(values = few_pal("Dark")(3))+
+  labs(x = "Time", y = "Mean", color = "Year")
+
+
+
+city_subset <- city_sampling %>%
+  filter(year %in% c("2015", "2016", "2017", "2018", "2019", "2020"))
+
+lab_mean <- expression(paste("Mean NO"[2]*" column density (10"^15*"molecules/cm"^2*")"))
+
+ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  # geom_line(data = subset(city_subset, year != "2020"), alpha = 0.2)+
+  # geom_line(data = subset(city_subset, year == "2020"), alpha = 0.4)+
+  # geom_point(data = subset(city_subset, year != "2020"), shape = 1, alpha = 0.2)+
+  # geom_point(data = subset(city_subset, year == "2020"), alpha = 0.3)+
+  # stat_smooth(data = subset(city_subset, year != "2020"), se=FALSE)+
+  # stat_smooth(data = subset(city_subset, year == "2020"), se=FALSE, size=1.5)+
+  stat_smooth(se=FALSE)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year")
+
+
+ggplot(city_subset, aes(x = m_d, y = mean_mod, color = year, fill=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  stat_smooth(data=subset(city_sampling, year_cat == "2005-2009"), aes(color=year_cat,fill=year_cat))+
+  #geom_line(data=subset(city_sampling, year_cat == "2005-2009"), aes(color=year_cat),stat="smooth",linetype="longdash")+
+  # geom_line(data = subset(city_subset, year != "2020"), alpha = 0.2)+
+  # geom_line(data = subset(city_subset, year == "2020"), alpha = 0.4)+
+  # geom_point(data = subset(city_subset, year != "2020"), shape = 1, alpha = 0.2)+
+  # geom_point(data = subset(city_subset, year == "2020"), alpha = 0.3)+
+  # stat_smooth(data = subset(city_subset, year != "2020"), se=FALSE)+
+  # stat_smooth(data = subset(city_subset, year == "2020"), se=FALSE, size=1.5)+
+  stat_smooth()+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = wes_palette("Zissou1", 7, type = "continuous"))+
+  scale_fill_manual(values = wes_palette("Zissou1", 7, type = "continuous"))+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year", fill = "Year")
+
+city_sampling$city <- factor(city_sampling$city, levels = c("Los Angeles", "Beijing", "Seoul", "Milan", "London"))
+four_pal <- wes_palette("FantasticFox1")[2:5]
+#four_pal <- wes_palette("Rushmore1")[2:5]
+
+ggplot(city_sampling, aes(x = m_d, y = mean_mod, color = year_cat, fill=year_cat))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  stat_smooth(method="loess")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = four_pal)+
+  scale_fill_manual(values = four_pal)+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year", fill = "Year")
+
+six_pal <- wes_palette("Zissou1", 6, type="continuous")
+
+ggplot(data=subset(city_sampling, year_cat %in% c("2015-2019", "2020")), aes(x = m_d, y = mean_mod, color = year, fill=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  stat_smooth(method="loess")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  scale_color_manual(values = six_pal)+
+  scale_fill_manual(values = six_pal)+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year", fill = "Year")
+```
+
+```{r los angeles}
+formatted_la <- city_sampling %>%
+  filter(city == "Los Angeles")
+
+#la_pal <- c(wes_palette("Darjeeling1")[5], wes_palette("Darjeeling1")[4], wes_palette("Darjeeling1")[2], wes_palette("Darjeeling1")[1])
+#la_pal <- wes_palette("Rushmore1")[2:5]
+la_pal <- wes_palette("FantasticFox1")[2:5]
+#the one
+ggplot(formatted_la, aes(x = m_d, y = mean, color = year_cat))+
+  geom_line(data = subset(formatted_la, year != "2020"), alpha = 0.3)+
+  geom_line(data = subset(formatted_la, year == "2020"), alpha = 0.4)+
+  stat_smooth(data = subset(formatted_la, year != "2020"), se=FALSE)+
+  stat_smooth(data = subset(formatted_la, year == "2020"), se=FALSE, size=1.5)+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  #scale_color_manual(values = wes_palette("FantasticFox1", 4, type="continuous"))+
+  scale_color_manual(values = la_pal)+
+  #scale_color_manual(values = few_pal("Dark")(3))+
+  labs(x = "Time", y = "Mean", color = "Year")
+```
+
+
+```{r country wrangling, eval = FALSE, include = FALSE}
+# usa <- read_csv("usa_no2.csv", skip=7)%>%
+#   mutate(country="USA")%>%
+#   rename("mean"=2)
+# 
+# china <- read_csv("china_no2.csv", skip=7) %>%
+#   mutate(country="China")%>%
+#   rename("mean"=2)
+# 
+# world_data <- full_join(usa, china) %>%
+#   filter(mean > 0) %>%
+#   mutate(year = format(time, format="%Y"),
+#          month = format(time, format="%m"),
+#          day = format(time, format="%d"),
+#          m_d = format(time, format="%m-%d"),
+#          m_d_mod = as.Date(m_d, format="%m-%d"),
+#          d = as.Date(day, format="%d")) %>%
+#   mutate(year = format(time, format = "%Y"),
+#          y = as.Date(year, format = "%Y"),
+#          month = format(time, format = "%m"),
+#          m = as.Date(month, format = "%m"),
+#          day = format(time, format = "%d"),
+#          d = as.Date(day, format = "%d"),
+#          month_day = format(time, format="%m-%d"),
+#          m_d = as.Date(month_day, format="%m-%d")) %>%
+#   mutate(year_cat = case_when(
+#     year == "2005" | year == "2006" | year == "2007" | year == "2008" | year == "2009" ~ "2005-2009",
+#     year == "2010" | year == "2011" | year == "2012" | year == "2013" | year == "2014" ~ "2010-2014",
+#     year == "2015" | year == "2016" | year == "2017" | year == "2018" | year == "2019" ~ "2015-2019",
+#     year == "2020" ~ "2020"
+#   ))
+```
+
+

@@ -85,8 +85,16 @@ la_no2_mod <- la_no2 %>%
          m_d = as.Date(month_day, format="%m-%d")) %>%
   filter(year != "2018")
 
+
+#here!
 ggplot(la_no2_mod, aes(x = m_d, y = mean, color = year))+
-  geom_line()
+  geom_line(alpha=0.3)+
+  stat_smooth()+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_few()+
+  theme(axis.text.x = element_text(angle = 30,
+                                   vjust = 0.7))+
+  labs(x = "Time", y = "Mean", color = "Year")
 
 ggplot(la_no2_mod, aes(month, day, fill=mean))+
   facet_wrap(~year)+
@@ -96,6 +104,12 @@ ggplot(la_no2_mod, aes(month, day, fill=mean))+
 
 ggplot(la_no2_mod, aes(month, day, fill=mean))+
   facet_grid(year~month)+
+  geom_tile()+
+  scale_fill_gradientn(colors = wes_palette(name = "Zissou1", type="continuous"))+
+  theme_few()
+
+ggplot(la_no2_mod, aes(month, day, fill=mean))+
+  facet_wrap(~year)+
   geom_tile()+
   scale_fill_gradientn(colors = wes_palette(name = "Zissou1", type="continuous"))+
   theme_few()
