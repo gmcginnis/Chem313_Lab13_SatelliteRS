@@ -1,0 +1,163 @@
+---
+title: "final_viz"
+author: "Gillian McGinnis"
+date: "12/6/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggthemes)
+library(wesanderson)
+```
+
+```{r dataframes}
+los_angeles <- read_csv("data/los_angeles.csv", skip=7)%>%
+  mutate(city="Los Angeles")%>%
+  rename("mean"=2)
+
+london <- read_csv("data/london.csv", skip=7)%>%
+  mutate(city="London")%>%
+  rename("mean"=2)
+
+hubei <- read_csv("data/hubei.csv", skip=7)%>%
+  mutate(city="Hubei Prov.")%>%
+  rename("mean"=2)
+
+seoul <- read_csv("data/seoul.csv", skip=7)%>%
+  mutate(city="Seoul")%>%
+  rename("mean"=2)
+
+milan <- read_csv("data/milan.csv", skip=7) %>%
+  mutate(city="Milan")%>%
+  rename("mean"=2)
+```
+
+
+```{r wrangling}
+city_sampling <- full_join(los_angeles, london) %>%
+  full_join(hubei) %>%
+  full_join(seoul) %>%
+  full_join(milan) %>%
+  filter(mean > 0) %>%
+  mutate(year = format(time, format="%Y"),
+         month = format(time, format="%m"),
+         day = format(time, format="%d"),
+         m_d = format(time, format="%m-%d"),
+         m_d_mod = as.Date(m_d, format="%m-%d"),
+         d = as.Date(day, format="%d")) %>%
+  mutate(year = format(time, format = "%Y"),
+         y = as.Date(year, format = "%Y"),
+         month = format(time, format = "%m"),
+         m = as.Date(month, format = "%m"),
+         day = format(time, format = "%d"),
+         d = as.Date(day, format = "%d"),
+         month_day = format(time, format="%m-%d"),
+         m_d = as.Date(month_day, format="%m-%d")) %>%
+  mutate(year_cat = case_when(
+    year == "2005" | year == "2006" | year == "2007" | year == "2008" | year == "2009" ~ "2005-2009",
+    year == "2010" | year == "2011" | year == "2012" | year == "2013" | year == "2014" ~ "2010-2014",
+    year == "2015" | year == "2016" | year == "2017" | year == "2018" | year == "2019" ~ "2015-2019",
+    year == "2020" ~ "2020"
+  )) %>%
+  mutate(mean_mod = mean/(10e15)) %>%
+  filter(year %in% c("2015", "2016", "2017", "2018", "2019", "2020")) %>%
+  mutate(sah1 = case_when(
+    city=="Los Angeles" ~ as.Date("2020-03-19"),
+    city=="Hubei Prov." ~ as.Date("2020-01-23"),
+    city=="Milan" ~ as.Date("2020-03-09"),
+    city=="London" ~ as.Date("2020-03-23")
+  ))%>%
+  mutate(sah1_end = case_when(
+    city=="Los Angeles" ~ as.Date("2020-05-08"),
+    city=="Hubei Prov." ~ as.Date("2020-04-08"),
+    city=="Milan" ~ as.Date("2020-05-18"),
+    city=="London" ~ as.Date("2020-07-04")
+  ))%>%
+  mutate(sah2 = case_when(
+    city=="Milan" ~ as.Date("2020-11-06"),
+    city=="London" ~ as.Date("2020-11-05")
+  ))%>%
+  mutate(sah2_end = case_when(
+    city=="Milan" ~ as.Date("2020-12-03"),
+    city=="London" ~ as.Date("2020-12-02")
+  ))
+
+sah_labels <- city_sampling %>%
+  mutate(yloc1 = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Hubei Prov." ~ 1.35,
+    city=="Milan" ~ 1.35,
+    city=="London" ~ 0.4
+  )) %>%
+  mutate(yloc1_end = case_when(
+    city=="Los Angeles" ~ 0.65,
+    city=="Hubei Prov." ~ 1.35,
+    city=="Milan" ~ 1.35,
+    city=="London" ~ 0.4
+  )) %>%
+ mutate(yloc2 = case_when(
+    city=="Milan" ~ 0.67,
+    city=="London" ~ 0.4
+  )) %>%
+  mutate(yloc2_end = case_when(
+    city=="Milan" ~ 0.67,
+    city=="London" ~ 0.4
+  )) %>%
+  select(city, sah1, sah1_end, sah2, sah2_end, yloc1, yloc1_end, yloc2, yloc2_end) %>%
+  distinct() %>%
+  mutate(sah1_md = format(sah1, format="%b %d"),
+         sah1_md_end = format(sah1_end, format = "%b %d"),
+         sah2_md = format(sah2, format="%b %d"),
+         sah2_md_end = format(sah2_end, format = "%b %d"))
+```
+
+```{r viz constants}
+lab_mean <- expression(paste("Mean NO"[2]*" column density (10"^15*"molecules/cm"^2*")"))
+
+# city_sampling$city <- factor(city_sampling$city, levels = c("Los Angeles", "Hubei Prov.", "Seoul", "Milan", "London"))
+# sah_labels$city <- factor(sah_labels$city, levels = c("Los Angeles", "Hubei Prov.", "Seoul", "Milan", "London"))
+# city_sampling$city <- factor(city_sampling$city, levels = c("Seoul", "Hubei Prov.", "Los Angeles", "Milan", "London"))
+# sah_labels$city <- factor(sah_labels$city, levels = c("Seoul", "Hubei Prov.", "Los Angeles", "Milan", "London"))
+city_sampling$city <- factor(city_sampling$city, levels = c("Seoul", "Hubei Prov.", "Milan", "Los Angeles", "London"))
+sah_labels$city <- factor(sah_labels$city, levels = c("Seoul", "Hubei Prov.", "Milan", "Los Angeles", "London"))
+
+sah_color <- wes_palette("Zissou1")[5]
+```
+
+
+```{r viz, warning=FALSE}
+#Could reduce repetition by converting dfs to long format, but this works too
+final_viz <- ggplot(city_sampling, aes(x=m_d, y=mean_mod, color=year))+
+  facet_wrap(~city, ncol = 1, strip.position = "right", scales = "free_y")+
+  #stat_smooth(se=FALSE)+
+  geom_vline(aes(xintercept = sah1), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah1_end), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah2), color=sah_color, linetype="dotted")+
+  geom_vline(aes(xintercept = sah2_end), color=sah_color, linetype="dotted")+
+  scale_x_date(date_breaks = "1 month", date_labels="%b")+
+  theme_igray()+
+  theme(legend.position="top", panel.grid.major.x=element_blank())+
+  scale_color_manual(values = wes_palette("Zissou1", 6, type = "continuous"))+
+  geom_text(data=sah_labels,aes(x = sah1, y = yloc1, label = paste("SaH1:\n",sah1_md)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_labels,aes(x = sah1_end, y = yloc1_end, label = paste("End:\n",sah1_md_end)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_labels,aes(x = sah2, y = yloc2, label = paste("SaH2:\n",sah2_md)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  geom_text(data=sah_labels,aes(x = sah2_end, y = yloc2_end, label = paste("End:\n",sah2_md_end)),
+            size=2.25, color=sah_color, nudge_x=1, hjust=0)+
+  #stat_smooth(se=FALSE)+
+  geom_line(stat="smooth", alpha=0.7, size=1)+
+  labs(x = "Time (data taken daily)", y = lab_mean, color = "Year")
+
+final_viz
+```
+
+```{r saving viz, warning=FALSE}
+ggsave("city_no2_comps.png", plot = final_viz, path = "figures/", width=8,height=8.5)
+```
+
+
